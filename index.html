@@ -4,8 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Search Reviews</title>
+
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
   <style>
     body {
       font-family: sans-serif;
@@ -13,16 +16,31 @@
       background-color: #000;
       color: white;
     }
+
     .search-container {
       display: flex;
       gap: 10px;
       margin-bottom: 2rem;
+      justify-content: center;
     }
+
     input[type="text"] {
-      padding: 0.5rem;
+      padding: 0.75rem 1.2rem;
       font-size: 1rem;
-      width: 350px;
+      width: 300px;
+      border: none;
+      border-radius: 999px;
+      background: linear-gradient(to bottom, #3366ff, #0030D1);
+      color: white;
+      font-family: sans-serif;
+      outline: none;
     }
+
+    input::placeholder {
+      color: white;
+      opacity: 1;
+    }
+
     button {
       padding: 0.5rem 1rem;
       font-size: 1rem;
@@ -32,20 +50,24 @@
       border-radius: 4px;
       cursor: pointer;
     }
+
     .reviews-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: 1rem;
     }
+
     .review-card {
       background: #1a1a1a;
       border-radius: 16px;
       padding: 1rem;
       position: relative;
     }
+
     .review-card h3 {
       margin: 0 0 0.5rem;
     }
+
     .review-card .date {
       font-size: 0.9rem;
       color: gray;
@@ -53,27 +75,35 @@
       top: 1rem;
       right: 1rem;
     }
+
     .stars {
       color: gold;
       font-size: 1.2rem;
       margin: 0.5rem 0;
     }
+
     .tags {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+      margin-top: 8px;
     }
+
     .tag {
       background-color: #0030D1;
       padding: 6px 12px;
       border-radius: 20px;
       font-size: 0.9rem;
     }
+
+    .bad-tag {
+      background-color: #F10404;
+    }
   </style>
 </head>
 <body>
   <div class="search-container">
-    <input type="text" id="usernameInput" placeholder="Search username..." />
+    <input type="text" id="usernameInput" placeholder="Search Username" />
     <button onclick="searchReviews()">Search</button>
   </div>
   <div class="reviews-grid" id="resultsContainer"></div>
@@ -102,50 +132,42 @@
           .limit(1)
           .get();
 
-        const userFound = !userSnap.empty;
-        let searchedUserID = null;
-
-        if (userFound) {
-          searchedUserID = userSnap.docs[0].id;
-
-          const reviewsSnap = await db.collection("Reviews")
-            .where("reviewerIDTo", "==", searchedUserID)
-            .orderBy("dateAdded", "desc")
-            .limit(10)
-            .get();
-
-          if (reviewsSnap.empty) {
-            container.innerHTML = "<p>No reviews found for this user.</p>";
-          } else {
-            reviewsSnap.forEach(doc => {
-              const data = doc.data();
-              const date = data.dateAdded?.toDate?.().toDateString?.() || "";
-              const stars = "\u2B50".repeat(data.stars);
-              const tags = (data.goodTags || []).map(tag => `<span class='tag'>${tag}</span>`).join("");
-
-              const card = document.createElement("div");
-              card.className = "review-card";
-              card.innerHTML = `
-                <h3>${data.reviewerFromUsername || "Anonymous"}</h3>
-                <div class="date">${date}</div>
-                <div class="stars">${stars}</div>
-                <div class="tags">${tags}</div>
-              `;
-              container.appendChild(card);
-            });
-          }
-        } else {
+        if (userSnap.empty) {
           container.innerHTML = "<p>No user found.</p>";
+          return;
         }
 
-        // ✅ Log to the Searches collection
-        await db.collection("Searches").add({
-          searchedUsername: username,
-          searchedUsernameLowercased: username,
-          userUIDSearcher: "anonymous", // or replace with authenticated user's ID if available
-          dateSearched: new Date(),
-          searchedUserExists: userFound,
-          ...(userFound && searchedUserID ? { searchedUserID } : {})
+        const userID = userSnap.docs[0].id;
+
+        const reviewsSnap = await db.collection("Reviews")
+          .where("reviewerIDTo", "==", userID)
+          .orderBy("dateAdded", "desc")
+          .limit(10)
+          .get();
+
+        if (reviewsSnap.empty) {
+          container.innerHTML = "<p>No reviews found for this user.</p>";
+          return;
+        }
+
+        reviewsSnap.forEach(doc => {
+          const data = doc.data();
+          const date = data.dateAdded?.toDate?.().toDateString?.() || "";
+          const stars = "\u2B50".repeat(data.stars);
+          const good = (data.goodTags || []).map(tag => `<span class='tag'>${tag}</span>`).join("");
+          const bad = (data.badTags || []).map(tag => `<span class='tag bad-tag'>${tag}</span>`).join("");
+
+          const card = document.createElement("div");
+          card.className = "review-card";
+          card.innerHTML = `
+            <h3>${data.reviewerFromUsername || "Anonymous"}</h3>
+            <div class="date">${date}</div>
+            <div class="stars">${stars}</div>
+            <div class="tags">${good}</div>
+            ${bad ? `<div class="tags">${bad}</div>` : ""}
+          `;
+
+          container.appendChild(card);
         });
 
       } catch (err) {
