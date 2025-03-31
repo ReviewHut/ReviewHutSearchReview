@@ -93,6 +93,12 @@
     .bad-tag {
       background-color: #F10404;
     }
+    #appStoreButton {
+      margin-top: 1.5rem;
+    }
+    #appStoreButton img {
+      width: 180px;
+    }
   </style>
 </head>
 <body>
@@ -105,6 +111,12 @@
     <button onclick="searchReviews()">
       <img src="magnifying-glass.png" alt="Search" />
     </button>
+  </div>
+
+  <div id="appStoreButton">
+    <a href="https://apps.apple.com/us/app/review-hut/id6737490514" target="_blank">
+      <img src="AppStore.png" alt="Download on the App Store" />
+    </a>
   </div>
 
   <div class="reviews-grid" id="resultsContainer"></div>
@@ -120,10 +132,13 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    document.getElementById("appStoreButton").style.display = "block";
+
     async function searchReviews() {
       const username = document.getElementById("usernameInput").value.trim().toLowerCase();
       const container = document.getElementById("resultsContainer");
       container.innerHTML = "";
+      document.getElementById("appStoreButton").style.display = "none";
 
       if (!username) return alert("Please enter a username.");
 
@@ -171,7 +186,6 @@
           container.innerHTML = "<p>No user found.</p>";
         }
 
-        // ✅ Log the search
         const search = {
           searchedUsername: username,
           searchedUsernameLowercased: username.toLowerCase(),
